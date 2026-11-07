@@ -1539,12 +1539,21 @@ extension MinimedPumpManager: PumpManager {
         }
     }
 
-    public func deletePump(completion: @escaping () -> Void) {
-        storePendingPumpEvents(forceFinalization: true) { error in
-            self.notifyDelegateOfDeactivation {
-                completion()
+    public func delete() async {
+        await withCheckedContinuation { continuation in
+            storePendingPumpEvents(forceFinalization: true) { [weak self] error in
+                if let error = error {
+                    self?.log.error(
+                        "Failed to finalize pump events during deletion: %{public}@",
+                        String(describing: error)
+                    )
+                }
+
+                continuation.resume()
             }
         }
+
+        await pumpManagerDelegate?.pumpManagerWantsDeletion(self)
     }
 }
 
